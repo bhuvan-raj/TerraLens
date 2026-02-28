@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TerraLens — Terminal Terraform Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c0f;
+      --bg2: #0f1217;
+      --bg3: #141820;
+      --border: #1e2530;
+      --border2: #252e3d;
+      --green: #00ff88;
+      --green2: #00cc6a;
+      --green-dim: rgba(0,255,136,0.08);
+      --green-dim2: rgba(0,255,136,0.15);
+      --orange: #ff6b35;
+      --blue: #4fc3f7;
+      --text: #e2e8f0;
+      --text2: #8892a4;
+      --text3: #4a5568;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ── SCANLINE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── NOISE TEXTURE ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.02;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: rgba(10,12,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      color: var(--green);
+      letter-spacing: 0.05em;
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: var(--text2); }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--green); }
+
+    .nav-cta {
+      background: var(--green);
+      color: #000 !important;
+      padding: 0.45rem 1.1rem;
+      font-weight: 700 !important;
+      transition: background 0.2s, transform 0.1s !important;
+    }
+
+    .nav-cta:hover {
+      background: var(--green2) !important;
+      transform: translateY(-1px);
+      color: #000 !important;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8rem 2rem 4rem;
+      position: relative;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.3;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black, transparent);
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,255,136,0.06) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3);
+      padding: 0.35rem 1rem;
+      margin-bottom: 2rem;
+      display: inline-block;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .hero h1 {
+      font-family: var(--sans);
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      animation: fadeUp 0.6s ease 0.1s both;
+    }
+
+    .hero h1 .accent { color: var(--green); }
+
+    .hero-sub {
+      font-family: var(--mono);
+      font-size: clamp(0.85rem, 2vw, 1rem);
+      color: var(--text2);
+      max-width: 560px;
+      margin: 1.5rem auto 0;
+      line-height: 1.8;
+      animation: fadeUp 0.6s ease 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 2.5rem;
+      animation: fadeUp 0.6s ease 0.3s both;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #000;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.85rem 2rem;
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 30px rgba(0,255,136,0.2);
+    }
+
+    .btn-primary:hover {
+      background: var(--green2);
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px rgba(0,255,136,0.35);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      padding: 0.85rem 2rem;
+      text-decoration: none;
+      border: 1px solid var(--border2);
+      letter-spacing: 0.05em;
+      transition: border-color 0.2s, color 0.2s, transform 0.15s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--green);
+      color: var(--green);
+      transform: translateY(-2px);
+    }
+
+    .hero-demo {
+      margin-top: 4rem;
+      width: 100%;
+      max-width: 900px;
+      position: relative;
+      animation: fadeUp 0.8s ease 0.4s both;
+    }
+
+    .demo-window {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 60px rgba(0,255,136,0.05);
+    }
+
+    .demo-titlebar {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+
+    .demo-title {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text3);
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .demo-video {
+      width: 100%;
+      display: block;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+    }
+
+    .demo-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%);
+      gap: 1rem;
+    }
+
+    .demo-placeholder-text {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--text3);
+    }
+
+    /* Terminal animation */
+    .terminal-preview {
+      width: 100%;
+      padding: 2rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      text-align: left;
+      background: #0d1117;
+    }
+
+    .t-line { margin-bottom: 0.4rem; opacity: 0; animation: termLine 0.3s ease forwards; }
+    .t-line:nth-child(1) { animation-delay: 0.5s; }
+    .t-line:nth-child(2) { animation-delay: 0.8s; }
+    .t-line:nth-child(3) { animation-delay: 1.1s; }
+    .t-line:nth-child(4) { animation-delay: 1.4s; }
+    .t-line:nth-child(5) { animation-delay: 1.7s; }
+    .t-line:nth-child(6) { animation-delay: 2.0s; }
+    .t-line:nth-child(7) { animation-delay: 2.3s; }
+    .t-prompt { color: var(--green); }
+    .t-cmd { color: var(--text); }
+    .t-out { color: var(--text2); }
+    .t-success { color: var(--green); }
+    .t-warn { color: var(--orange); }
+    .t-info { color: var(--blue); }
+    .t-cursor { display: inline-block; width: 8px; height: 14px; background: var(--green); vertical-align: middle; animation: blink 1s step-end infinite; margin-left: 2px; }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--green);
+      display: block;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-top: 0.25rem;
+    }
+
+    /* ── SECTIONS ── */
+    section { padding: 6rem 2rem; }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .section-sub {
+      color: var(--text2);
+      font-size: 1rem;
+      max-width: 520px;
+      margin-top: 0.75rem;
+      line-height: 1.7;
+    }
+
+    /* ── FEATURES ── */
+    .features { background: var(--bg); }
+
+    .features-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .features-header { margin-bottom: 3.5rem; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .feature-card {
+      background: var(--bg2);
+      padding: 2rem;
+      transition: background 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--green);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s ease;
+    }
+
+    .feature-card:hover { background: var(--bg3); }
+    .feature-card:hover::before { transform: scaleX(1); }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .feature-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-desc {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--text2);
+      line-height: 1.7;
+    }
+
+    /* ── INSTALL ── */
+    .install { background: var(--bg2); }
+
+    .install-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .install-header { margin-bottom: 3rem; }
+
+    .install-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border2);
+      margin-bottom: 0;
+    }
+
+    .tab-btn {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: none;
+      color: var(--text2);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--green);
+      border-bottom-color: var(--green);
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .code-block {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-top: none;
+      padding: 1.5rem;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .code-block pre {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre;
+    }
+
+    .code-block .comment { color: var(--text3); }
+    .code-block .cmd { color: var(--green); }
+    .code-block .flag { color: var(--blue); }
+    .code-block .str { color: var(--orange); }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: var(--border);
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .copy-btn:hover {
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .install-note {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text2);
+      border-left: 2px solid var(--green);
+      padding: 0.75rem 1rem;
+      margin-top: 1.5rem;
+      background: var(--green-dim);
+    }
+
+    /* ── DOWNLOAD ── */
+    .download { background: var(--bg); }
+
+    .download-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-top: 3rem;
+    }
+
+    .download-card {
+      border: 1px solid var(--border2);
+      padding: 2rem;
+      background: var(--bg2);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .download-card:hover {
+      border-color: var(--green);
+      transform: translateY(-3px);
+    }
+
+    .dl-os {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text2);
+    }
+
+    .dl-icon { font-size: 2.5rem; }
+
+    .dl-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .dl-desc {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--green);
+      color: #000;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.65rem 1.2rem;
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      transition: background 0.2s;
+      margin-top: auto;
+      width: fit-content;
+    }
+
+    .dl-btn:hover { background: var(--green2); }
+
+    .dl-btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+
+    .dl-btn-secondary:hover {
+      background: transparent;
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    /* ── KEYBOARD SHORTCUTS ── */
+    .shortcuts { background: var(--bg2); }
+
+    .shortcuts-inner {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .kbd-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2.5rem;
+    }
+
+    .kbd-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kbd-table td {
+      padding: 0.9rem 0;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--text2);
+    }
+
+    .kbd-table td:first-child { width: 40%; }
+
+    kbd {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: var(--mono);
+      font-size: 1.2rem;
+      color: var(--green);
+      margin-bottom: 1rem;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+
+    .footer-links a {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--green); }
+
+    .footer-copy {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text3);
+    }
+
+    .footer-copy a { color: var(--text2); text-decoration: none; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes termLine {
+      to { opacity: 1; }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      nav { padding: 1rem; }
+      .nav-links { display: none; }
+
+      .hero { padding: 6rem 1.5rem 3rem; }
+
+      .stats-bar { gap: 2rem; }
+
+      section { padding: 4rem 1.5rem; }
+
+      .install-tabs { overflow-x: auto; }
+
+      .tab-btn { padding: 0.6rem 1rem; white-space: nowrap; }
+
+      .download-grid { grid-template-columns: 1fr; }
+    }
+
+    /* hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text2);
+      transition: background 0.2s;
+    }
+
+    .hamburger:hover span { background: var(--green); }
+
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">Terra<span>Lens</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#download">Download</a></li>
+    <li><a href="https://github.com/bhuvan-raj/TerraLens" target="_blank">GitHub</a></li>
+    <li><a href="https://github.com/bhuvan-raj/TerraLens/releases" target="_blank" class="nav-cta">↓ Releases</a></li>
+  </ul>
+  <div class="hamburger" onclick="alert('Open menu')">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-badge">v0.1.3 — Now Available</div>
+
+  <h1>Terraform, <br><span class="accent">in the terminal.</span></h1>
+
+  <p class="hero-sub">
+    TerraLens is a fully interactive TUI dashboard for Terraform —
+    browse state, plan, apply, detect drift, estimate costs and scaffold
+    new resources without leaving your CLI.
+  </p>
+
+  <div class="hero-actions">
+    <a href="#install" class="btn-primary">Get Started →</a>
+    <a href="https://github.com/bhuvan-raj/TerraLens" target="_blank" class="btn-secondary">View on GitHub</a>
+  </div>
+
+  <div class="hero-demo">
+    <div class="demo-window">
+      <div class="demo-titlebar">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <span class="demo-title">terralens — ~/my-terraform-project</span>
+      </div>
+      <!-- Replace src with your actual GIF URL -->
+      <div class="terminal-preview">
+        <div class="t-line"><span class="t-prompt">❯ </span><span class="t-cmd">terralens</span></div>
+        <div class="t-line"><span class="t-out">  Loading terraform.tfstate...</span></div>
+        <div class="t-line"><span class="t-success">  ✓ Found 24 resources across 3 providers</span></div>
+        <div class="t-line"><span class="t-info">  ┌─────────────────────────────────────────┐</span></div>
+        <div class="t-line"><span class="t-info">  │  TerraLens  v0.1.3    [1] Overview  [2] Manage  │</span></div>
+        <div class="t-line"><span class="t-info">  └─────────────────────────────────────────┘</span></div>
+        <div class="t-line"><span class="t-success">  ✓ Dashboard ready  </span><span class="t-cursor"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item fade-in">
+    <span class="stat-num">334</span>
+    <span class="stat-label">AWS Resources</span>
+  </div>
+  <div class="stat-item fade-in">
+    <span class="stat-num">20</span>
+    <span class="stat-label">Categories</span>
+  </div>
+  <div class="stat-item fade-in">
+    <span class="stat-num">3</span>
+    <span class="stat-label">Install Methods</span>
+  </div>
+  <div class="stat-item fade-in">
+    <span class="stat-num">MIT</span>
+    <span class="stat-label">License</span>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="features-inner">
+    <div class="features-header fade-in">
+      <div class="section-label">// features</div>
+      <h2 class="section-title">Everything you need,<br>nothing you don't.</h2>
+      <p class="section-sub">All the power of the Terraform CLI wrapped in a keyboard-driven terminal interface.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <span class="feature-icon">📊</span>
+        <div class="feature-title">Overview Dashboard</div>
+        <div class="feature-desc">Terraform version, state serial, total resource count, provider count, and a full resource summary table — all at a glance.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">🌲</span>
+        <div class="feature-title">Resource Tree</div>
+        <div class="feature-desc">Resources grouped by type. Click any leaf to load its full attribute map including nested maps and lists.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">🔍</span>
+        <div class="feature-title">Live Plan</div>
+        <div class="feature-desc">Streams real <code>terraform plan</code> output line-by-line into the terminal panel as it runs.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">⚡</span>
+        <div class="feature-title">Apply Now</div>
+        <div class="feature-desc">Runs <code>terraform apply -auto-approve</code> and automatically reloads the resource tree on success.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">💰</span>
+        <div class="feature-title">Cost Estimate</div>
+        <div class="feature-desc">Infracost-powered breakdown with per-resource monthly costs and total estimates, rendered right in the terminal.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">🔄</span>
+        <div class="feature-title">Drift Detection</div>
+        <div class="feature-desc">Detects infrastructure drift using <code>terraform plan -refresh-only</code> and reports exactly which resources changed.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">➕</span>
+        <div class="feature-title">Add Resource Wizard</div>
+        <div class="feature-desc">3-step wizard: pick provider → browse 334 AWS resources → configure fields and preview HCL before writing or applying.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">🗑️</span>
+        <div class="feature-title">Targeted Destroy</div>
+        <div class="feature-desc">Select any resource in the tree, click Destroy. A confirmation modal shows the full address before execution.</div>
+      </div>
+      <div class="feature-card fade-in">
+        <span class="feature-icon">🔁</span>
+        <div class="feature-title">State Reload</div>
+        <div class="feature-desc">Press <kbd>r</kbd> at any time to reload state from disk without restarting the application.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="install" id="install">
+  <div class="install-inner">
+    <div class="install-header fade-in">
+      <div class="section-label">// installation</div>
+      <h2 class="section-title">Three ways to install.</h2>
+      <p class="section-sub">Pick whichever method works best for your setup.</p>
+    </div>
+
+    <div class="fade-in">
+      <div class="install-tabs">
+        <button class="tab-btn active" onclick="switchTab('pip', this)">pip install</button>
+        <button class="tab-btn" onclick="switchTab('binary', this)">Binary</button>
+        <button class="tab-btn" onclick="switchTab('source', this)">From Source</button>
+      </div>
+
+      <!-- PIP -->
+      <div class="tab-panel active" id="tab-pip">
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode('pip-code')">Copy</button>
+          <pre id="pip-code"><span class="comment"># Install globally with pipx (recommended on Arch / modern Linux)</span>
+<span class="cmd">pipx install TerraLens</span>
+
+<span class="comment"># Or with pip in a virtual environment</span>
+<span class="cmd">python -m venv .venv</span>
+<span class="cmd">source .venv/bin/activate</span>
+<span class="cmd">pip install TerraLens</span>
+
+<span class="comment"># Run from your Terraform project directory</span>
+<span class="cmd">cd ~/my-terraform-project</span>
+<span class="cmd">terralens</span></pre>
+        </div>
+        <div class="install-note">
+          ⓘ  Run <code>python installer.py</code> once after installing to configure Infracost for cost estimation.
+        </div>
+      </div>
+
+      <!-- BINARY -->
+      <div class="tab-panel" id="tab-binary">
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode('binary-code')">Copy</button>
+          <pre id="binary-code"><span class="comment"># Linux — download and run</span>
+<span class="cmd">curl -L</span> <span class="str">https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.3/insight-tf-linux</span> <span class="flag">-o</span> terralens
+<span class="cmd">chmod +x</span> terralens
+<span class="cmd">mv</span> terralens ~/my-terraform-project
+<span class="cmd">cd</span> ~/my-terraform-project
+<span class="cmd">./terralens</span>
+
+<span class="comment"># Windows — download from Releases page, then:</span>
+<span class="cmd">.\insight-tf-windows.exe</span></pre>
+        </div>
+        <div class="install-note">
+          ⓘ  No Python, no pip, no dependencies — everything is bundled inside the binary.
+        </div>
+      </div>
+
+      <!-- SOURCE -->
+      <div class="tab-panel" id="tab-source">
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode('source-code')">Copy</button>
+          <pre id="source-code"><span class="comment"># Clone the repository</span>
+<span class="cmd">git clone</span> <span class="str">https://github.com/bhuvan-raj/TerraLens.git</span>
+<span class="cmd">cd</span> TerraLens
+
+<span class="comment"># Create a virtual environment</span>
+<span class="cmd">python3 -m venv</span> .venv
+<span class="cmd">source</span> .venv/bin/activate
+
+<span class="comment"># Install dependencies</span>
+<span class="cmd">pip install -r</span> requirements.txt
+
+<span class="comment"># Run the app</span>
+<span class="cmd">cd</span> src/insight_tf
+<span class="cmd">python</span> cli.py</pre>
+        </div>
+        <div class="install-note">
+          ⓘ  No state file? TerraLens loads built-in sample AWS data so you can explore the UI immediately.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="download" id="download">
+  <div class="download-inner">
+    <div class="fade-in">
+      <div class="section-label">// download</div>
+      <h2 class="section-title">Grab the latest release.</h2>
+      <p class="section-sub">Pre-built binaries for Linux and Windows. No Python installation required.</p>
+    </div>
+
+    <div class="download-grid">
+      <div class="download-card fade-in">
+        <div class="dl-os">// linux</div>
+        <div class="dl-icon">🐧</div>
+        <div class="dl-name">Linux Binary</div>
+        <div class="dl-desc">Works on Ubuntu, Arch, Fedora, and all glibc-based distributions. Built on Ubuntu runners.</div>
+        <a href="https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.3/insight-tf-linux" class="dl-btn" download>
+          ↓ Download for Linux
+        </a>
+      </div>
+
+      <div class="download-card fade-in">
+        <div class="dl-os">// windows</div>
+        <div class="dl-icon">🪟</div>
+        <div class="dl-name">Windows Binary</div>
+        <div class="dl-desc">Self-contained .exe for Windows. Download, move to your project folder, and run.</div>
+        <a href="https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.3/insight-tf-windows.exe" class="dl-btn" download>
+          ↓ Download for Windows
+        </a>
+      </div>
+
+      <div class="download-card fade-in">
+        <div class="dl-os">// pypi</div>
+        <div class="dl-icon">🐍</div>
+        <div class="dl-name">Python Package</div>
+        <div class="dl-desc">Install via pip or pipx. Available on PyPI for Python 3.10+ on any platform.</div>
+        <a href="https://pypi.org/project/TerraLens/" target="_blank" class="dl-btn dl-btn-secondary">
+          ↗ View on PyPI
+        </a>
+      </div>
+
+      <div class="download-card fade-in">
+        <div class="dl-os">// all releases</div>
+        <div class="dl-icon">📦</div>
+        <div class="dl-name">All Releases</div>
+        <div class="dl-desc">Browse all versions, read release notes, and download previous builds on GitHub.</div>
+        <a href="https://github.com/bhuvan-raj/TerraLens/releases" target="_blank" class="dl-btn dl-btn-secondary">
+          ↗ GitHub Releases
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KEYBOARD SHORTCUTS -->
+<section class="shortcuts" id="shortcuts">
+  <div class="shortcuts-inner">
+    <div class="fade-in">
+      <div class="section-label">// keyboard shortcuts</div>
+      <h2 class="section-title">Keyboard first.</h2>
+      <p class="section-sub">TerraLens is designed for keyboard-driven workflows.</p>
+    </div>
+
+    <table class="kbd-table fade-in">
+      <tr>
+        <td><kbd>1</kbd></td>
+        <td>Switch to Overview tab</td>
+      </tr>
+      <tr>
+        <td><kbd>2</kbd></td>
+        <td>Switch to Manage tab</td>
+      </tr>
+      <tr>
+        <td><kbd>r</kbd></td>
+        <td>Reload state from disk</td>
+      </tr>
+      <tr>
+        <td><kbd>q</kbd></td>
+        <td>Quit the application</td>
+      </tr>
+      <tr>
+        <td><kbd>Esc</kbd></td>
+        <td>Close any open modal or wizard</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">TerraLens</div>
+  <div class="footer-links">
+    <a href="https://github.com/bhuvan-raj/TerraLens" target="_blank">GitHub</a>
+    <a href="https://github.com/bhuvan-raj/TerraLens/releases" target="_blank">Releases</a>
+    <a href="https://pypi.org/project/TerraLens/" target="_blank">PyPI</a>
+    <a href="https://github.com/bhuvan-raj/TerraLens/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
+    <a href="https://github.com/bhuvan-raj/TerraLens/blob/main/LICENSE" target="_blank">MIT License</a>
+  </div>
+  <div class="footer-copy">
+    Built with ❤️ using <a href="https://textual.textualize.io/" target="_blank">Textual</a> and <a href="https://www.terraform.io/" target="_blank">Terraform</a>
+  </div>
+</footer>
+
+<script>
+  // Tab switching
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // Copy to clipboard
+  function copyCode(id) {
+    const el = document.getElementById(id);
+    const text = el.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = el.closest('.code-block').querySelector('.copy-btn');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = 'var(--green)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+    });
+  }
+
+  // Scroll animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
