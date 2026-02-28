@@ -191,7 +191,7 @@ All pull requests must pass the test suite before being merged. If you add a new
 
 ## Reporting Bugs
 
-Open a [GitHub Issue](https://github.com/bhuvan-raj/Insight-Q/issues) and include:
+Open a [GitHub Issue](https://github.com/bhuvan-raj/TerraLens/issues) and include:
 
 - Your OS and Python version
 - How you installed TerraLens (binary / pip / source)
@@ -203,7 +203,7 @@ Open a [GitHub Issue](https://github.com/bhuvan-raj/Insight-Q/issues) and includ
 
 ## Feature Requests
 
-Open a [GitHub Issue](https://github.com/bhuvan-raj/Insight-Q/issues) with the `enhancement` label. Describe:
+Open a [GitHub Issue](https://github.com/bhuvan-raj/TerraLens/issues) with the `enhancement` label. Describe:
 
 - What you want TerraLens to do
 - Why it would be useful
