@@ -15,7 +15,10 @@
 Insight-TF turns your Terraform workflow into a fully interactive TUI — browse state, inspect resources, plan, apply, detect drift, estimate costs, and scaffold new resources, all from a single terminal window.
 
 
-https://github.com/user-attachments/assets/2e3fa276-8a02-405f-b893-262f8dbf1dd8
+
+https://github.com/user-attachments/assets/e22c8bd5-7eec-4d4a-98da-b0d26253b847
+
+
 
 
 ---
