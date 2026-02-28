@@ -20,48 +20,23 @@ https://github.com/user-attachments/assets/e22c8bd5-7eec-4d4a-98da-b0d26253b847
 
 
 
-
 ---
 
 ## Installation
 
 Choose the method that suits you best.
 
-### Download a Binary
+## Note - To avail Infracost features, You have to install Infracost and supporting dependencies before the Application Installation
 
-Pre-built binaries are available for **Linux** and **Windows** on the [Releases page](https://github.com/bhuvan-raj/TerraLens/releases).
-
-**Linux:**
-```bash
-# Download the latest binary
-curl -L https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.2/insight-tf-linux -o terralens
-
-# Make it executable
-chmod +x terralens
-
-# Move the executable to destination terraform project directory
-mv terralens /my-terraform-project
-
-# Run it from your Terraform project directory
-cd ~/my-terraform-project
-
-./terralens
 ```
+git clone https://github.com/bhuvan-raj/TerraLens.git
 
-**Windows:**
-```powershell
-# Download insight-tf-windows.exe from the Releases page
-curl -L https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.2/insight-tf-windows.exe
+cd TerraLens
 
-# Move the nsight-tf-windows.exe to your terraform project directory
+cd src/insight_tf
 
-# then run:
-.\insight-tf-windows.exe
+python installer.py #this script automatically installs and configures necessary dependecies for the application to run smoothly
 ```
-
-> No Python, no pip, no dependencies — everything is bundled inside the binary.
-
----
 
 ## Install via pip
 
@@ -98,14 +73,52 @@ terralens
 terralens /path/to/terraform.tfstate
 ```
 
+## Download a Binary
+
+Pre-built binaries are available for **Linux** and **Windows** on the [Releases page](https://github.com/bhuvan-raj/TerraLens/releases).
+
+**Linux:**
+```bash
+# Download the latest binary
+curl -L https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.3/insight-tf-linux -o terralens
+
+# Make it executable
+chmod +x terralens
+
+# Move the executable to destination terraform project directory
+mv terralens /my-terraform-project
+
+# Run it from your Terraform project directory
+cd ~/my-terraform-project
+
+./terralens
+```
+
+**Windows:**
+```powershell
+# Download insight-tf-windows.exe from the Releases page
+curl -L https://github.com/bhuvan-raj/TerraLens/releases/download/v0.1.3/insight-tf-windows.exe
+
+# Move the nsight-tf-windows.exe to your terraform project directory
+
+# then run:
+.\insight-tf-windows.exe
+```
+
+> No Python, no pip, no dependencies — everything is bundled inside the binary.
+
+---
+
+
+
 ---
 
 ### Option 3 — Install from Source
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/bhuvan-raj/Insight-Q.git
-cd Insight-Q
+git clone https://github.com/bhuvan-raj/TerraLens.git
+cd TerraLens
 
 # 2. Create a virtual environment
 python3 -m venv .venv
@@ -113,29 +126,15 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
+
+cd src/insight_tf
+
+python cli.py
 ```
 
 ---
+> **No state file?** The app loads built-in sample AWS data so you can explore the UI immediately.
 
-### ⚠️ Required: Run the Setup Script
-
-Regardless of which installation method you use, **you must run `setup.py` once** before launching the app for the first time:
-
-```bash
-python setup.py
-```
-
-The setup script automatically:
-- Checks Python 3.10+
-- Installs `textual` and `rich`
-- Checks for Terraform in `PATH`
-- Downloads and installs **Infracost** for your platform (Linux / macOS / Windows)
-- Guides you through Infracost authentication (free — no credit card required)
-- Writes `.insight-tf.json` with resolved binary paths
-
-> **Why is this needed?** Infracost (used for cost estimation) requires authentication and its binary path needs to be recorded so Insight-TF can find it at runtime.
-
----
 
 ## Features
 
@@ -162,42 +161,6 @@ The setup script automatically:
 | Infracost | any | Auto-installed by `setup.py` for Cost Estimate |
 | OS | Linux / macOS / Windows | Tested on Ubuntu 22.04+, macOS 13+ |
 
----
-
-## Quick Start
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/bhuvan-raj/Insight-Q.git
-cd Insight-Q
-```
-
-### 2. Create a virtual environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-```
-
-### 3. Run the setup script
-
-```bash
-python setup.py
-```
-
-### 4. Launch the app
-
-```bash
-# From your Terraform project directory (auto-loads terraform.tfstate)
-cd ~/my-terraform-project
-python /path/to/insight-tf/insight_tf.py
-
-# Or pass the state file path explicitly
-python insight_tf.py /path/to/terraform.tfstate
-```
-
-> **No state file?** The app loads built-in sample AWS data so you can explore the UI immediately.
 
 ---
 
