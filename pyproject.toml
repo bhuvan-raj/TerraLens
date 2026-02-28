@@ -13,7 +13,7 @@ dependencies = []
 Homepage = "https://github.com/bhuvan-raj/TerraLens"
 
 [project.scripts]
-insight-tf = "insight_tf.cli:main"
+terralens = "insight_tf.cli:main"
 
 [build-system]
 requires = ["setuptools>=61"]
