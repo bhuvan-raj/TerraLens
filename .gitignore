@@ -1,0 +1,43 @@
+# ----------------------
+# Python
+# ----------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+venv/
+.env/
+.venv/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# ----------------------
+# Terraform
+# ----------------------
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+
+# ----------------------
+# VS Code / IDE
+# ----------------------
+.vscode/
+.idea/
+
+# ----------------------
+# OS Files
+# ----------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------
+# Logs
+# ----------------------
+*.log
