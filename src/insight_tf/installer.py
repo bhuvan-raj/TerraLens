@@ -60,33 +60,9 @@ def check_python():
     ok(f"Python {v.major}.{v.minor}.{v.micro}")
 
 
-# ──────────────────────────────────────────────────────────────────
-# Step 2: Install Python Dependencies
-# ──────────────────────────────────────────────────────────────────
-def install_python_deps():
-    header("Installing Python dependencies")
-    deps = ["textual>=0.47.0", "rich>=13.0.0"]
-
-    for dep in deps:
-        name = dep.split(">=")[0]
-        info(f"Installing {dep}...")
-
-        result = run(
-            [sys.executable, "-m", "pip", "install", dep, "--quiet"],
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode == 0:
-            ok(f"{name} installed")
-        else:
-            err(f"Failed to install {name}")
-            print(result.stderr.strip())
-            sys.exit(1)
-
 
 # ──────────────────────────────────────────────────────────────────
-# Step 3: Terraform Check
+# Step 2: Terraform Check
 # ──────────────────────────────────────────────────────────────────
 def check_terraform():
     header("Checking Terraform")
@@ -100,7 +76,7 @@ def check_terraform():
 
 
 # ──────────────────────────────────────────────────────────────────
-# Step 4: Infracost Installation
+# Step 3: Infracost Installation
 # ──────────────────────────────────────────────────────────────────
 def install_infracost():
     header("Installing Infracost")
