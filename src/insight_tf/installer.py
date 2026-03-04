@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
-Insight-TF Setup Script
-Automatically installs:
-  - Python dependencies (textual, rich)
-  - Terraform (check only)
-  - Infracost (latest release, robust extraction)
-  - Infracost authentication
+TerraLens Setup Script
+Automatically installs and configures Infracost.
 """
 
 import json
@@ -28,7 +24,6 @@ GREEN  = "\033[32m"
 YELLOW = "\033[33m"
 RED    = "\033[31m"
 CYAN   = "\033[36m"
-DIM    = "\033[2m"
 
 def ok(msg):   print(f"  {GREEN}✔{RESET}  {msg}")
 def info(msg): print(f"  {CYAN}→{RESET}  {msg}")
@@ -49,20 +44,7 @@ def run_check(cmd):
 
 
 # ──────────────────────────────────────────────────────────────────
-# Step 1: Python Version
-# ──────────────────────────────────────────────────────────────────
-def check_python():
-    header("Checking Python version")
-    v = sys.version_info
-    if v < (3, 10):
-        err("Python 3.10+ required.")
-        sys.exit(1)
-    ok(f"Python {v.major}.{v.minor}.{v.micro}")
-
-
-
-# ──────────────────────────────────────────────────────────────────
-# Step 2: Terraform Check
+# Step 1: Terraform Check
 # ──────────────────────────────────────────────────────────────────
 def check_terraform():
     header("Checking Terraform")
@@ -76,7 +58,7 @@ def check_terraform():
 
 
 # ──────────────────────────────────────────────────────────────────
-# Step 3: Infracost Installation
+# Step 2: Infracost Installation
 # ──────────────────────────────────────────────────────────────────
 def install_infracost():
     header("Installing Infracost")
@@ -93,7 +75,7 @@ def _get_latest_version():
     try:
         req = urllib.request.Request(
             "https://api.github.com/repos/infracost/infracost/releases/latest",
-            headers={"User-Agent": "insight-tf"}
+            headers={"User-Agent": "terralens"}
         )
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read())
@@ -108,9 +90,9 @@ def _install_infracost_binary():
 
     arch_map = {
         "x86_64": "amd64",
-        "amd64": "amd64",
+        "amd64":  "amd64",
         "aarch64": "arm64",
-        "arm64": "arm64",
+        "arm64":  "arm64",
     }
 
     arch = arch_map.get(machine, machine)
@@ -118,14 +100,14 @@ def _install_infracost_binary():
 
     if not os_name:
         warn("Unsupported OS for auto-install.")
+        warn("Install manually: https://www.infracost.io/docs/")
         return False
 
     version = _get_latest_version()
     archive_name = f"infracost-{os_name}-{arch}.tar.gz"
-
     url = f"https://github.com/infracost/infracost/releases/download/{version}/{archive_name}"
 
-    info(f"Downloading {version} from GitHub...")
+    info(f"Downloading Infracost {version}...")
 
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -140,8 +122,6 @@ def _install_infracost_binary():
                 for member in tf.getmembers():
                     if member.isfile():
                         filename = member.name.split("/")[-1]
-
-                        # FUTURE-PROOF MATCHING
                         if filename.startswith("infracost"):
                             f = tf.extractfile(member)
                             if f:
@@ -182,17 +162,18 @@ def _ensure_path(bin_dir: Path):
         content = rc.read_text()
         if str(bin_dir) not in content:
             rc.write_text(content + export_line)
-            warn("Added ~/.local/bin to PATH. Restart terminal.")
+            warn(f"Added {bin_dir} to PATH in ~/.bashrc — restart your terminal.")
 
 
 # ──────────────────────────────────────────────────────────────────
-# Step 5: Configure Infracost Auth
+# Step 3: Configure Infracost Auth
 # ──────────────────────────────────────────────────────────────────
 def configure_infracost():
     header("Configuring Infracost")
 
     if not shutil.which("infracost"):
-        warn("Infracost not found. Skipping auth.")
+        warn("Infracost not found in PATH. Skipping auth.")
+        warn("You may need to restart your terminal and re-run this script.")
         return
 
     creds = Path.home() / ".config" / "infracost" / "credentials.yml"
@@ -201,7 +182,8 @@ def configure_infracost():
         return
 
     print()
-    print("  Infracost requires an API key (free).")
+    print("  Infracost requires a free API key.")
+    print("  Sign up at https://www.infracost.io/docs/ (no credit card required).")
     print()
 
     choice = input("  Authenticate now? (y/n): ").strip().lower()
@@ -213,11 +195,11 @@ def configure_infracost():
         else:
             warn("Auth failed. Run manually: infracost auth login")
     else:
-        warn("Skipped authentication.")
+        warn("Skipped. Run manually when ready: infracost auth login")
 
 
 # ──────────────────────────────────────────────────────────────────
-# Step 6: Write Config
+# Step 4: Write Config
 # ──────────────────────────────────────────────────────────────────
 def write_config():
     header("Writing app configuration")
@@ -234,24 +216,24 @@ def write_config():
 
 
 # ──────────────────────────────────────────────────────────────────
-# Step 7: Summary
+# Step 5: Summary
 # ──────────────────────────────────────────────────────────────────
 def print_summary():
-    tf_ok = bool(shutil.which("terraform"))
+    tf_ok        = bool(shutil.which("terraform"))
     infracost_ok = bool(shutil.which("infracost"))
 
     print(f"\n{'─' * 50}")
     print("  Setup Summary")
     print(f"{'─' * 50}")
-    print(f"  {'✔' if tf_ok else '⚠'} Terraform")
+    print(f"  {'✔' if tf_ok        else '⚠'} Terraform")
     print(f"  {'✔' if infracost_ok else '⚠'} Infracost")
     print(f"{'─' * 50}\n")
 
     if tf_ok and infracost_ok:
-        print("  All set! Run:")
-        print("  python insight_tf.py\n")
+        ok("All set! Run: terralens")
     else:
-        print("  Setup completed with warnings.\n")
+        warn("Setup completed with warnings. Check above for details.")
+    print()
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -259,11 +241,9 @@ def print_summary():
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("\n╔══════════════════════════════════╗")
-    print("║        Insight-TF Setup          ║")
+    print("║        TerraLens Setup           ║")
     print("╚══════════════════════════════════╝")
 
-    check_python()
-    install_python_deps()
     check_terraform()
     success = install_infracost()
     if success:
