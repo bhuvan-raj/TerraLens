@@ -38,7 +38,7 @@ Pre-built binaries are available for **Ubuntu (Linux)** and **Windows** on the [
 **Ubuntu / Linux:**
 ```bash
 # Download the latest binary
-curl -L https://github.com/bhuvan-raj/Insight-Q/releases/latest/download/insight-tf-linux -o insight-tf
+curl -L https://github.com/bhuvan-raj/TerraLens/releases/latest/download/insight-tf-linux -o insight-tf
 
 # Make it executable
 chmod +x insight-tf
