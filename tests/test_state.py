@@ -1,8 +1,7 @@
 """
 tests/test_state.py — Tests for format_value and SAMPLE_STATE from cli.py
 """
-from insight_tf.cli import format_value, SAMPLE_STATE
-
+from insight_tf.state import format_value, SAMPLE_STATE
 
 # ── SAMPLE_STATE ──────────────────────────────────────────────────────────────
 

@@ -1,8 +1,7 @@
 """
 tests/test_catalog.py — Tests for the AWS resource catalog from cli.py
 """
-from insight_tf.cli import AWS_RESOURCE_CATALOG, ALL_AWS_RESOURCES, _cat_id
-
+from insight_tf.catalog import AWS_RESOURCE_CATALOG, ALL_AWS_RESOURCES, _cat_id
 
 # ── catalog structure ─────────────────────────────────────────────────────────
 

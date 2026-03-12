@@ -1,0 +1,120 @@
+"""
+tests/test_templates.py — Tests for HCL template rendering from cli.py
+"""
+from insight_tf.catalog import RESOURCE_TEMPLATES, _build_tf_block
+
+# ── RESOURCE_TEMPLATES structure ──────────────────────────────────────────────
+
+def test_templates_not_empty():
+    assert len(RESOURCE_TEMPLATES) > 0
+
+def test_templates_expected_types():
+    for rtype in (
+        "aws_s3_bucket", "aws_instance", "aws_vpc", "aws_subnet",
+        "aws_security_group", "aws_db_instance", "aws_iam_role", "aws_lambda_function"
+    ):
+        assert rtype in RESOURCE_TEMPLATES, f"Missing template: {rtype}"
+
+def test_templates_have_required_keys():
+    for rtype, tmpl in RESOURCE_TEMPLATES.items():
+        assert "description" in tmpl, f"{rtype} missing 'description'"
+        assert "fields" in tmpl,      f"{rtype} missing 'fields'"
+        assert "template" in tmpl,    f"{rtype} missing 'template'"
+
+def test_template_fields_have_required_keys():
+    for rtype, tmpl in RESOURCE_TEMPLATES.items():
+        for field in tmpl["fields"]:
+            for key in ("name", "label", "placeholder", "required", "default"):
+                assert key in field, f"{rtype} field missing '{key}'"
+
+def test_template_required_field_is_bool():
+    for rtype, tmpl in RESOURCE_TEMPLATES.items():
+        for field in tmpl["fields"]:
+            assert isinstance(field["required"], bool)
+
+def test_each_template_has_resource_name_field():
+    for rtype, tmpl in RESOURCE_TEMPLATES.items():
+        names = [f["name"] for f in tmpl["fields"]]
+        assert "resource_name" in names, f"{rtype} missing 'resource_name' field"
+
+
+# ── _build_tf_block ───────────────────────────────────────────────────────────
+
+def _s3_values(**overrides):
+    base = {"resource_name": "my_bucket", "bucket": "my-unique-bucket", "tags_name": ""}
+    base.update(overrides)
+    return base
+
+def test_build_s3_contains_resource_type():
+    assert 'resource "aws_s3_bucket"' in _build_tf_block("aws_s3_bucket", _s3_values())
+
+def test_build_s3_contains_resource_name():
+    assert '"my_bucket"' in _build_tf_block("aws_s3_bucket", _s3_values())
+
+def test_build_s3_contains_bucket_name():
+    assert "my-unique-bucket" in _build_tf_block("aws_s3_bucket", _s3_values())
+
+def test_build_s3_with_tags():
+    hcl = _build_tf_block("aws_s3_bucket", _s3_values(tags_name="MyBucket"))
+    assert "tags" in hcl
+    assert "MyBucket" in hcl
+
+def test_build_s3_without_tags():
+    assert "tags" not in _build_tf_block("aws_s3_bucket", _s3_values(tags_name=""))
+
+def test_build_instance_contains_ami():
+    values = {"resource_name": "web", "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.micro", "tags_name": ""}
+    assert "ami-0c55b159cbfafe1f0" in _build_tf_block("aws_instance", values)
+
+def test_build_instance_contains_instance_type():
+    values = {"resource_name": "web", "ami": "ami-0c55b159cbfafe1f0",
+              "instance_type": "t3.micro", "tags_name": ""}
+    assert "t3.micro" in _build_tf_block("aws_instance", values)
+
+def test_build_vpc_contains_cidr():
+    values = {"resource_name": "main", "cidr_block": "10.0.0.0/16",
+              "enable_dns_hostnames": "true", "tags_name": ""}
+    assert "10.0.0.0/16" in _build_tf_block("aws_vpc", values)
+
+def test_build_vpc_is_valid_hcl_structure():
+    values = {"resource_name": "main", "cidr_block": "10.0.0.0/16",
+              "enable_dns_hostnames": "true", "tags_name": ""}
+    hcl = _build_tf_block("aws_vpc", values)
+    assert hcl.startswith('resource "aws_vpc"')
+    assert "{" in hcl
+    assert "}" in hcl
+
+def test_build_iam_role_contains_service():
+    values = {"resource_name": "lambda_role", "name": "lambda-exec-role",
+              "service": "lambda.amazonaws.com", "tags_name": ""}
+    hcl = _build_tf_block("aws_iam_role", values)
+    assert "lambda.amazonaws.com" in hcl
+    assert "sts:AssumeRole" in hcl
+
+def test_build_lambda_contains_runtime():
+    values = {"resource_name": "my_fn", "function_name": "my-function",
+              "runtime": "python3.11", "handler": "index.handler",
+              "role": "aws_iam_role.lambda_role.arn", "filename": "lambda.zip"}
+    assert "python3.11" in _build_tf_block("aws_lambda_function", values)
+
+def test_build_db_instance_contains_engine():
+    values = {"resource_name": "main_db", "identifier": "main-db",
+              "engine": "postgres", "engine_version": "14",
+              "instance_class": "db.t3.micro", "allocated_storage": "20",
+              "db_name": "mydb", "username": "admin", "password": "secret"}
+    hcl = _build_tf_block("aws_db_instance", values)
+    assert "postgres" in hcl
+    assert "skip_final_snapshot" in hcl
+
+def test_build_subnet_with_az():
+    values = {"resource_name": "pub_subnet", "vpc_id": "aws_vpc.main.id",
+              "cidr_block": "10.0.1.0/24", "availability_zone": "us-east-1a",
+              "tags_name": ""}
+    assert "us-east-1a" in _build_tf_block("aws_subnet", values)
+
+def test_build_subnet_without_az():
+    values = {"resource_name": "pub_subnet", "vpc_id": "aws_vpc.main.id",
+              "cidr_block": "10.0.1.0/24", "availability_zone": "",
+              "tags_name": ""}
+    assert "availability_zone" not in _build_tf_block("aws_subnet", values)
