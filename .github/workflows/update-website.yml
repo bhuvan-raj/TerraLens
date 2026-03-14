@@ -1,0 +1,201 @@
+name: Update Website on Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-website:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Parse CHANGELOG and update index.html
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_DATE: ${{ github.event.release.created_at }}
+        run: |
+          python3 << 'PYEOF'
+          import re
+          import os
+          from datetime import datetime
+
+          tag      = os.environ["RELEASE_TAG"]           # e.g. v0.1.5
+          date_raw = os.environ["RELEASE_DATE"]          # e.g. 2026-03-14T12:00:00Z
+          version  = tag.lstrip("v")                     # e.g. 0.1.5
+          date_str = date_raw[:10]                       # e.g. 2026-03-14
+
+          # ── 1. Parse CHANGELOG.md ────────────────────────────────────────
+          changelog = open("CHANGELOG.md").read()
+
+          # Split into per-version blocks
+          version_blocks = re.split(r"\n## \[", changelog)
+          parsed_versions = []
+
+          for block in version_blocks[1:]:          # skip preamble
+              lines       = block.strip().splitlines()
+              header      = lines[0]                # e.g. "0.1.4] - 2026-03-14"
+              ver_match   = re.match(r"([\d.]+)\] - ([\d-]+)", header)
+              if not ver_match:
+                  continue
+              ver      = ver_match.group(1)
+              bdate    = ver_match.group(2)
+
+              # Parse subsections (### Added / ### Fixed / ### Refactored)
+              sections = {}
+              current  = None
+              for line in lines[1:]:
+                  h3 = re.match(r"^### (.+)", line)
+                  if h3:
+                      current = h3.group(1)
+                      sections[current] = []
+                  elif line.startswith("- ") and current:
+                      sections[current].append(line[2:].strip())
+
+              parsed_versions.append({
+                  "version": ver,
+                  "date":    bdate,
+                  "sections": sections,
+              })
+
+          # ── 2. Determine badge label per version ─────────────────────────
+          def badge_label(sections):
+              keys = [k.lower() for k in sections.keys()]
+              if "added" in keys:
+                  return "added"
+              if "fixed" in keys:
+                  return "fixed"
+              if "refactored" in keys or "changed" in keys:
+                  return "refactor"
+              return "added"
+
+          # ── 3. Build accordion HTML ──────────────────────────────────────
+          def render_accordion(versions):
+              items = []
+              for i, v in enumerate(versions):
+                  is_latest  = (i == 0)
+                  label      = badge_label(v["sections"])
+                  open_cls   = " open" if is_latest else ""
+                  latest_badge = '\n          <span class="acc-latest-badge">latest</span>' if is_latest else ""
+
+                  # Build section bodies
+                  body_html = ""
+                  for sec_name, bullets in v["sections"].items():
+                      body_html += f"          <h3>{sec_name}</h3>\n          <ul>\n"
+                      for b in bullets:
+                          # Escape HTML entities
+                          b = b.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                          body_html += f"            <li>{b}</li>\n"
+                      body_html += "          </ul>\n"
+
+                  item = f"""      <div class="acc-item">
+        <div class="acc-header{open_cls}" onclick="toggleAcc(this)">
+          <span class="acc-version">v{v['version']}</span>
+          <span class="acc-date">{v['date']}</span>
+          <span class="acc-tag {label}">{label.capitalize()}</span>{latest_badge}
+          <span class="acc-chevron">▼</span>
+        </div>
+        <div class="acc-body{open_cls}">
+{body_html}        </div>
+      </div>"""
+                  items.append(item)
+
+              return (
+                  '    <div class="accordion" id="changelog-accordion">\n'
+                  + "\n\n".join(items)
+                  + "\n    </div>"
+              )
+
+          accordion_html = render_accordion(parsed_versions)
+
+          # ── 4. Inject into index.html ────────────────────────────────────
+          html = open("docs/index.html").read()
+
+          new_block = (
+              "    <!-- CHANGELOG_INJECT_START -->\n"
+              + accordion_html
+              + "\n    <!-- CHANGELOG_INJECT_END -->"
+          )
+
+          html = re.sub(
+              r"    <!-- CHANGELOG_INJECT_START -->.*?<!-- CHANGELOG_INJECT_END -->",
+              new_block,
+              html,
+              flags=re.DOTALL,
+          )
+
+          # ── 5. Update version numbers in download section ────────────────
+          # Replace all old vX.Y.Z release URLs with the new tag
+          html = re.sub(
+              r"releases/download/v[\d.]+/",
+              f"releases/download/{tag}/",
+              html
+          )
+
+          # Update any hardcoded version display text like "v0.1.3"
+          html = re.sub(
+              r'(?<!["\-/])v\d+\.\d+\.\d+(?!["\-/\d])',
+              tag,
+              html
+          )
+
+          # ── 6. Update README section if present ──────────────────────────
+          if "<!-- README_INJECT_START -->" in html:
+              try:
+                  import subprocess
+                  result = subprocess.run(
+                      ["python3", "-m", "pip", "install", "-q", "markdown"],
+                      capture_output=True
+                  )
+                  import markdown
+                  readme_md   = open("README.md").read()
+                  readme_html = markdown.markdown(
+                      readme_md,
+                      extensions=["fenced_code", "tables"]
+                  )
+                  readme_block = (
+                      "    <!-- README_INJECT_START -->\n"
+                      f'    <div class="readme-content">\n{readme_html}\n    </div>\n'
+                      "    <!-- README_INJECT_END -->"
+                  )
+                  html = re.sub(
+                      r"    <!-- README_INJECT_START -->.*?<!-- README_INJECT_END -->",
+                      readme_block,
+                      html,
+                      flags=re.DOTALL,
+                  )
+              except Exception as e:
+                  print(f"README injection skipped: {e}")
+
+          open("docs/index.html", "w").write(html)
+          print(f"✅  docs/index.html updated for {tag}")
+          PYEOF
+
+      - name: Commit and push updated website
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add docs/index.html
+
+          # Only commit if something actually changed
+          if git diff --staged --quiet; then
+            echo "No changes to docs/index.html — skipping commit."
+          else
+            git commit -m "docs: update website for ${{ github.event.release.tag_name }} [skip ci]"
+            git push origin main
+            echo "✅  Website updated and pushed."
+          fi

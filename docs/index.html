@@ -353,6 +353,46 @@
 
     /* ── SECTIONS ── */
     section { padding: 6rem 2rem; }
+    /* ── Changelog ── */
+    .changelog { background: var(--bg1); }
+    .accordion { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.75rem; }
+    .acc-item { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg2); }
+    .acc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.5rem; cursor: pointer; user-select: none;
+      transition: background 0.2s;
+    }
+    .acc-header:hover { background: rgba(255,255,255,0.04); }
+    .acc-header.open { border-bottom: 1px solid var(--border); }
+    .acc-version {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem; font-weight: 700; color: var(--green);
+    }
+    .acc-date { font-size: 0.8rem; color: var(--text2); margin-left: 1rem; }
+    .acc-tag {
+      font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 99px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 600;
+      margin-left: auto; margin-right: 1rem;
+    }
+    .acc-tag.added    { background: rgba(80,200,120,0.15); color: #50c878; }
+    .acc-tag.fixed    { background: rgba(255,180,0,0.15);  color: #ffb400; }
+    .acc-tag.refactor { background: rgba(100,160,255,0.15); color: #64a0ff; }
+    .acc-chevron { color: var(--text2); transition: transform 0.25s; font-size: 0.9rem; }
+    .acc-header.open .acc-chevron { transform: rotate(180deg); }
+    .acc-body { display: none; padding: 1.25rem 1.5rem; line-height: 1.8; }
+    .acc-body.open { display: block; }
+    .acc-body h3 { color: var(--green); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1rem 0 0.4rem; }
+    .acc-body h3:first-child { margin-top: 0; }
+    .acc-body ul { list-style: none; padding: 0; margin: 0; }
+    .acc-body ul li { color: var(--text2); font-size: 0.92rem; padding: 0.2rem 0 0.2rem 1.2rem; position: relative; }
+    .acc-body ul li::before { content: "→"; position: absolute; left: 0; color: var(--green); opacity: 0.6; }
+    .acc-latest-badge {
+      display: inline-block; font-size: 0.65rem; padding: 0.15rem 0.5rem;
+      background: var(--green); color: #000; border-radius: 99px;
+      font-weight: 700; margin-left: 0.75rem; vertical-align: middle;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
 
     .section-label {
       font-family: var(--mono);
@@ -771,6 +811,7 @@
   <a href="#" class="nav-logo">Terra<span>Lens</span></a>
   <ul class="nav-links">
     <li><a href="#features">Features</a></li>
+    <li><a href="#changelog">Changelog</a></li>
     <li><a href="#install">Install</a></li>
     <li><a href="#download">Download</a></li>
     <li><a href="https://github.com/bhuvan-raj/TerraLens" target="_blank">GitHub</a></li>
@@ -1072,6 +1113,120 @@
   </div>
 </section>
 
+
+<!-- CHANGELOG -->
+<section class="changelog" id="changelog">
+  <div class="container">
+    <div class="section-label">// changelog</div>
+    <h2 class="section-title">What's new.</h2>
+    <p class="section-sub">Every release, documented. Click a version to expand the full notes.</p>
+
+    <!-- CHANGELOG_INJECT_START -->
+    <div class="accordion" id="changelog-accordion">
+      <div class="acc-item">
+        <div class="acc-header open" onclick="toggleAcc(this)">
+          <span class="acc-version">v0.1.4</span>
+          <span class="acc-date">2026-03-14</span>
+          <span class="acc-tag added">Added</span>
+          <span class="acc-latest-badge">latest</span>
+          <span class="acc-chevron">▼</span>
+        </div>
+        <div class="acc-body open">
+          <h3>Added</h3>
+          <ul>
+            <li>Infrastructure Blueprints — 8 pre-built multi-resource configurations (VPC+EC2, Three-Tier, EKS, Serverless API and more)</li>
+            <li>New Add Resource mode selection screen — choose Blueprint or Single Resource</li>
+            <li>All blueprint HCL uses Terraform resource references with no hardcoded IDs</li>
+            <li>3-step blueprint wizard: pick → configure → preview &amp; save</li>
+          </ul>
+          <h3>Refactored</h3>
+          <ul>
+            <li>Split monolithic cli.py into state.py, catalog.py, blueprints.py, and cli.py</li>
+            <li>Simplified installer.py — Infracost setup only</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-version">v0.1.3</span>
+          <span class="acc-date">2026-02-28</span>
+          <span class="acc-tag fixed">Fixed</span>
+          <span class="acc-chevron">▼</span>
+        </div>
+        <div class="acc-body">
+          <h3>Fixed</h3>
+          <ul>
+            <li>Removed duplicate main() function that caused NameError crash on startup</li>
+            <li>Eliminated stale InsightTFApp import referencing a non-existent module</li>
+            <li>CLI and binary now correctly launch the full InsightTF app</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-version">v0.1.2</span>
+          <span class="acc-date">2026-02-27</span>
+          <span class="acc-tag fixed">Fixed</span>
+          <span class="acc-chevron">▼</span>
+        </div>
+        <div class="acc-body">
+          <h3>Fixed</h3>
+          <ul>
+            <li>Fixed PowerShell line continuation error breaking Windows builds</li>
+            <li>Added shell: bash to GitHub Actions workflow for cross-platform consistency</li>
+            <li>Windows binary now builds and runs correctly</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-version">v0.1.1</span>
+          <span class="acc-date">2026-02-27</span>
+          <span class="acc-tag fixed">Fixed</span>
+          <span class="acc-chevron">▼</span>
+        </div>
+        <div class="acc-body">
+          <h3>Fixed</h3>
+          <ul>
+            <li>Fixed ModuleNotFoundError for rich._unicode_data on startup</li>
+            <li>Added --collect-submodules flags to PyInstaller for complete bundling</li>
+            <li>Resolves crashes on Arch Linux and non-Ubuntu distributions</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <span class="acc-version">v0.1.0</span>
+          <span class="acc-date">2026-02-26</span>
+          <span class="acc-tag added">Added</span>
+          <span class="acc-chevron">▼</span>
+        </div>
+        <div class="acc-body">
+          <h3>Added</h3>
+          <ul>
+            <li>Initial public release of TerraLens</li>
+            <li>Overview tab — Terraform version, state serial, resource count, provider count</li>
+            <li>Manage tab — interactive resource tree with full attribute inspector</li>
+            <li>Plan — streams real terraform plan output line-by-line</li>
+            <li>Apply Now — runs terraform apply -auto-approve with state reload</li>
+            <li>Cost Estimate — Infracost-powered monthly cost breakdown</li>
+            <li>Drift Detection — terraform plan -refresh-only with parsed summary</li>
+            <li>Add Resource wizard — 334 AWS resources across 20 categories</li>
+            <li>Destroy — targeted destroy with confirmation modal</li>
+            <li>State Reload — press r to reload state from disk</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <!-- CHANGELOG_INJECT_END -->
+
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">TerraLens</div>
@@ -1119,6 +1274,14 @@
   }, { threshold: 0.1 });
 
   document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  function toggleAcc(header) {
+    const body = header.nextElementSibling;
+    const isOpen = header.classList.contains('open');
+    header.classList.toggle('open', !isOpen);
+    body.classList.toggle('open', !isOpen);
+  }
+
 </script>
 </body>
 </html>
