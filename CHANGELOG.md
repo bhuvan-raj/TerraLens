@@ -1,6 +1,31 @@
 # Changelog
-
 All notable changes to TerraLens are documented here.
+
+---
+
+## [0.1.4] - 2026-03-14
+
+### Added
+- **Infrastructure Blueprints** — new `🏗️ Build from Blueprint` mode accessible from the `➕ Add Resource` button
+- 8 built-in blueprints that generate complete, production-ready Terraform configurations with fully interconnected resources:
+  - 🌐 **Public Web Server** — VPC, public subnet, IGW, route table, security group (HTTP/SSH), EC2
+  - 🔒 **Public + Private with NAT** — VPC, public + private subnets, IGW, EIP, NAT Gateway, bastion EC2, private app EC2
+  - ⚖️ **Load Balanced Web Application** — VPC, 4 subnets, NAT, ALB, target group, launch template, Auto Scaling Group
+  - 🏛️ **Three-Tier Architecture** — VPC, 6 subnets (public/app/db), NAT, ALB, 2× EC2 app servers, RDS multi-AZ
+  - ☁️ **Static Website Hosting** — S3, CloudFront, OAI, ACM certificate, Route53 zone + A/CNAME records
+  - ⚡ **Serverless API** — IAM role, Lambda, API Gateway v2, DynamoDB, S3 assets bucket
+  - ☸️ **EKS Kubernetes Cluster** — VPC, 4 subnets with K8s tags, NAT, cluster + node IAM roles, EKS cluster, managed node group
+  - 🔑 **Lambda + IAM Role** — IAM execution role, basic policy attachment, Lambda function
+- All blueprint HCL uses Terraform resource references (no hardcoded IDs) so the generated config is immediately valid
+- 3-step blueprint wizard: pick blueprint → configure fields (pre-filled defaults) → preview HCL → write file or write & apply
+
+### Refactored
+- Split monolithic `cli.py` (~2300 lines) into three focused modules:
+  - `state.py` — app config loader, sample state, `load_state()`, `format_value()`
+  - `catalog.py` — AWS resource catalog (334 resources), HCL templates, provider list, helper functions
+  - `blueprints.py` — all 8 blueprint definitions and HCL renderer
+  - `cli.py` — UI only, all Textual screens, widgets, `InsightTF` app, entry point
+- Simplified `installer.py` — removed Python dependency installation steps, now handles Infracost setup only
 
 ---
 
